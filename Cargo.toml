@@ -1,6 +1,6 @@
 [package]
 name = "remote-backup"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 
 [dependencies]
@@ -11,3 +11,4 @@ ring = "0.17.8"
 tar = "0.4.43"
 xz2 = "0.1.7"
 chrono = "0.4.38"
+rand = "0.8.5"
