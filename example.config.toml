@@ -1,0 +1,16 @@
+[backup]
+backup_folder = "/home/user/backup_me"
+exclude_paths = ["/home/user/backup_me/.cache"]
+remote_backup_dir = "/mnt/disk/backups"
+restore_path = "/home/user/restored_backups"
+compression_level = 9
+max_backups = 3
+
+[ssh]
+host = "127.0.0.1"
+port = 22
+user = "user"
+identity_file = "/home/user/.ssh/id_rsa" # SSH key should be without passphrase
+
+[encryption]
+key_path = "/home/user/.backup_crypt_key" # 32 byte key to encrypt & decrypt backups
