@@ -1,15 +1,15 @@
 use crate::config::Settings;
 use crate::ssh::{upload_file, list_backups, delete_backup};
-use crate::encryption::encrypt_data;
 use std::fs;
 use std::io;
 use tar::Builder;
 use xz2::write::XzEncoder;
 use chrono::Local;
 use std::process::Command;
+use crate::encryption::encrypt_data;
 
 pub fn create_backup(settings: &Settings) -> io::Result<()> {
-    let archive_path = format!("/tmp/backup-{}.tar.xz", Local::now().format("%Y%m%d%H%M"));
+    let archive_path = format!("{}/backup-{}.tar.xz", settings.tmp_path.display(), Local::now().format("%Y%m%d%H%M"));
     println!("Creating compressed archive at path: {}", archive_path);
 
     let tar_file = fs::File::create(&archive_path)?;
@@ -30,8 +30,7 @@ pub fn create_backup(settings: &Settings) -> io::Result<()> {
             tar.append_dir_all(path.strip_prefix(&settings.backup_folder).unwrap(), &path)?;
         } else if path.is_file() {
             println!("Adding file {} to archive", path.display());
-            let mut file = fs::File::open(&path)?;
-            tar.append_file(path.strip_prefix(&settings.backup_folder).unwrap(), &mut file)?;
+            tar.append_path_with_name(&path, path.strip_prefix(&settings.backup_folder).unwrap())?;
         }
     }
 
@@ -66,7 +65,7 @@ pub fn create_backup(settings: &Settings) -> io::Result<()> {
     fs::remove_file(&archive_path)?;
     fs::remove_file(&encrypted_archive_path)?;
 
-    println!("Temporary files removed from /tmp.");
+    println!("Temporary files removed from tmp directory.");
     Ok(())
 }
 

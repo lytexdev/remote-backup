@@ -73,7 +73,6 @@ pub fn list_backups(settings: &Settings) -> io::Result<Vec<String>> {
     Ok(backups)
 }
 
-
 pub fn delete_backup(filename: &str, settings: &Settings) -> io::Result<()> {
     let sess = setup_ssh_session(settings)?;
     let sftp = sess.sftp()?;

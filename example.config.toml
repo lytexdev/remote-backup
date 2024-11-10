@@ -3,6 +3,7 @@ backup_folder = "/home/user/backup_me"
 exclude_paths = ["/home/user/backup_me/.cache"]
 remote_backup_dir = "/mnt/disk/backups"
 restore_path = "/home/user/restored_backups"
+tmp_path = "/tmp" # Path to store the backups before upload
 compression_level = 9
 max_backups = 3
 
