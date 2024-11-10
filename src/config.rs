@@ -17,9 +17,9 @@ pub struct Settings {
     pub encryption_key_path: PathBuf,
 }
 
-pub fn load_config() -> Result<Settings, config::ConfigError> {
+pub fn load_config(config_path: PathBuf) -> Result<Settings, config::ConfigError> {
     let settings = Config::builder()
-        .add_source(File::with_name("config"))
+        .add_source(File::from(config_path))
         .build()?;
 
     Ok(Settings {

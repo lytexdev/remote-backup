@@ -1,13 +1,25 @@
-use crate::config::Settings;
+use crate::config::{load_config, Settings};
 use structopt::StructOpt;
 use rand::Rng;
 use std::fs::File;
 use std::io::{self, Write};
+use std::path::PathBuf;
+
 mod config;
 mod backup;
 mod encryption;
 mod ssh;
 mod cleanup;
+
+#[derive(StructOpt)]
+#[structopt(name = "remote-backup", about = "A CLI for remote backup management")]
+struct Cli {
+    #[structopt(subcommand)]
+    command: Command,
+
+    #[structopt(short = "c", long = "config", parse(from_os_str))]
+    config_path: Option<PathBuf>,
+}
 
 #[derive(StructOpt)]
 enum Command {
@@ -18,10 +30,12 @@ enum Command {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let command = Command::from_args();
-    let settings = config::load_config()?;
+    let args = Cli::from_args();
 
-    match command {
+    let config_path = args.config_path.unwrap_or_else(|| PathBuf::from("config.toml"));
+    let settings = load_config(config_path)?;
+
+    match args.command {
         Command::List => {
             ssh::list_backups(&settings)?;
         }
