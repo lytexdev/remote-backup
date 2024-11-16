@@ -1,6 +1,7 @@
 [backup]
 backup_folder = "/home/user/backup_me"
 exclude_paths = ["/home/user/backup_me/.cache"]
+exclude_hidden = true # Set to false if hidden files/folders (starts with .) should be included
 remote_backup_dir = "/mnt/disk/backups"
 restore_path = "/home/user/restored_backups"
 tmp_path = "/tmp" # Path to store the backups before upload

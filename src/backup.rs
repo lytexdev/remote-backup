@@ -19,12 +19,21 @@ pub fn create_backup(settings: &Settings) -> io::Result<()> {
     for entry in fs::read_dir(&settings.backup_folder)? {
         let entry = entry?;
         let path = entry.path();
-        
+
+        if settings.exclude_hidden {
+            if let Some(name) = path.file_name() {
+                if name.to_string_lossy().starts_with('.') {
+                    println!("Excluding hidden file or directory: {}", path.display());
+                    continue;
+                }
+            }
+        }
+
         if settings.exclude_paths.iter().any(|exclude| path.starts_with(exclude)) {
             println!("Excluding {}", path.display());
             continue;
         }
-        
+
         if path.is_dir() {
             println!("Adding directory {} to archive", path.display());
             tar.append_dir_all(path.strip_prefix(&settings.backup_folder).unwrap(), &path)?;

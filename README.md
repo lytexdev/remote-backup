@@ -32,6 +32,7 @@ Configure `config.toml` as follows:
 [backup]
 backup_folder = "/path/to/folder"           # Folder to backup
 exclude_paths = ["/path/to/folder/cache"]   # Paths to exclude from backup
+exclude_hidden = false                      # Exclude hidden files and directories (files/directories starting with .)
 remote_backup_dir = "/path/to/remote/dir"   # Directory on the remote server
 restore_path = "/path/to/restore"           # Directory to restore files locally
 compression_level = 9                       # Compression level (1-9)
