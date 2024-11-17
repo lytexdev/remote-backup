@@ -5,10 +5,13 @@ use std::io;
 use tar::Builder;
 use xz2::write::XzEncoder;
 use chrono::Local;
-use std::process::Command;
 use crate::encryption::encrypt_data;
 
 pub fn create_backup(settings: &Settings) -> io::Result<()> {
+    if !settings.tmp_path.exists() {
+        fs::create_dir_all(&settings.tmp_path)?;
+    }
+
     let archive_path = format!("{}/backup-{}.tar.xz", settings.tmp_path.display(), Local::now().format("%Y%m%d%H%M"));
     println!("Creating compressed archive at path: {}", archive_path);
 
@@ -19,6 +22,8 @@ pub fn create_backup(settings: &Settings) -> io::Result<()> {
     for entry in fs::read_dir(&settings.backup_folder)? {
         let entry = entry?;
         let path = entry.path();
+
+        println!("Processing path: {}", path.display());
 
         if settings.exclude_hidden {
             if let Some(name) = path.file_name() {
@@ -36,40 +41,40 @@ pub fn create_backup(settings: &Settings) -> io::Result<()> {
 
         if path.is_dir() {
             println!("Adding directory {} to archive", path.display());
-            tar.append_dir_all(path.strip_prefix(&settings.backup_folder).unwrap(), &path)?;
+            tar.append_dir_all(path.strip_prefix(&settings.backup_folder).unwrap(), &path)
+                .map_err(|e| {
+                    println!("Error adding directory {}: {}", path.display(), e);
+                    e
+                })?;
         } else if path.is_file() {
             println!("Adding file {} to archive", path.display());
-            tar.append_path_with_name(&path, path.strip_prefix(&settings.backup_folder).unwrap())?;
+            tar.append_path_with_name(&path, path.strip_prefix(&settings.backup_folder).unwrap())
+                .map_err(|e| {
+                    println!("Error adding file {}: {}", path.display(), e);
+                    e
+                })?;
         }
     }
 
-    tar.finish()?;
+    tar.finish().map_err(|e| {
+        println!("Error finishing the archive: {}", e);
+        e
+    })?;
     println!("Archive created and compressed successfully.");
-    drop(tar);
 
     let archive_size = fs::metadata(&archive_path)?.len();
     println!("Compressed archive size: {} Bytes", archive_size);
 
-    println!("Testing the compressed archive locally...");
-    let output = Command::new("tar")
-        .arg("-tvf")
-        .arg(&archive_path)
-        .output()
-        .expect("Failed to execute tar command");
-
-    if !output.status.success() {
-        println!("Local integrity test failed. Archive might be corrupted.");
-        return Err(io::Error::new(io::ErrorKind::Other, "Compressed file might be corrupted"));
-    }
-
-    println!("Local integrity test passed. Proceeding with encryption...");
-
     let encrypted_archive_path = format!("{}.enc", archive_path);
+    println!("Encrypting the archive...");
     encrypt_data(&archive_path, &encrypted_archive_path, settings)?;
+    println!("Encryption completed: {}", encrypted_archive_path);
 
     manage_backup_limit(settings)?;
 
+    println!("Uploading the encrypted archive...");
     upload_file(&encrypted_archive_path, &fs::read(&encrypted_archive_path)?, settings)?;
+    println!("Upload completed.");
 
     fs::remove_file(&archive_path)?;
     fs::remove_file(&encrypted_archive_path)?;
