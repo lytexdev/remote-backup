@@ -73,7 +73,7 @@ pub fn create_backup(settings: &Settings) -> io::Result<()> {
     manage_backup_limit(settings)?;
 
     println!("Uploading the encrypted archive...");
-    upload_file(&encrypted_archive_path, &fs::read(&encrypted_archive_path)?, settings)?;
+    upload_file(&encrypted_archive_path, settings)?;
     println!("Upload completed.");
 
     fs::remove_file(&archive_path)?;

@@ -1,10 +1,12 @@
 use crate::config::Settings;
 use crate::encryption::decrypt_data;
 use ssh2::Session;
-use std::fs;
+use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
+
+const UPLOAD_CHUNK_SIZE: usize = 10 * 1024 * 1024;
 
 pub fn setup_ssh_session(settings: &Settings) -> Result<Session, io::Error> {
     let tcp = TcpStream::connect((settings.ssh_host.as_str(), settings.ssh_port))?;
@@ -26,17 +28,17 @@ pub fn setup_ssh_session(settings: &Settings) -> Result<Session, io::Error> {
     Ok(sess)
 }
 
-pub fn upload_file(archive_path: &str, archive_data: &[u8], settings: &Settings) -> io::Result<()> {
-    println!("Starting upload process for archive: {}", archive_path);
+pub fn upload_file(file_path: &str, settings: &Settings) -> io::Result<()> {
+    println!("Starting upload process for archive: {}", file_path);
 
     let sess = setup_ssh_session(settings)?;
     let sftp = sess.sftp()?;
 
-    let archive_filename = Path::new(archive_path)
+    let file_name = Path::new(file_path)
         .file_name()
-        .expect("Failed to extract archive filename");
+        .expect("Failed to extract file name");
 
-    let remote_path = format!("{}/{}", settings.remote_backup_dir.display(), archive_filename.to_string_lossy());
+    let remote_path = format!("{}/{}", settings.remote_backup_dir.display(), file_name.to_string_lossy());
     println!("Remote path for upload: {}", remote_path);
 
     let mut remote_file = sftp.create(Path::new(&remote_path)).map_err(|e| {
@@ -44,10 +46,19 @@ pub fn upload_file(archive_path: &str, archive_data: &[u8], settings: &Settings)
         io::Error::new(io::ErrorKind::Other, "Failed to create remote file")
     })?;
 
-    remote_file.write_all(archive_data).map_err(|e| {
-        println!("Failed to upload file data: {:?}", e);
-        io::Error::new(io::ErrorKind::Other, "Failed to upload file data")
-    })?;
+    let mut local_file = File::open(file_path)?;
+    let mut buffer = vec![0; UPLOAD_CHUNK_SIZE];
+
+    while let Ok(bytes_read) = local_file.read(&mut buffer) {
+        if bytes_read == 0 {
+            break;
+        }
+
+        remote_file.write_all(&buffer[..bytes_read]).map_err(|e| {
+            println!("Failed to upload file chunk: {:?}", e);
+            io::Error::new(io::ErrorKind::Other, "Failed to upload file chunk")
+        })?;
+    }
 
     println!("Archive successfully uploaded.");
     Ok(())
