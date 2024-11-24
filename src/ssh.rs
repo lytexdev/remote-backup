@@ -1,5 +1,5 @@
 use crate::config::Settings;
-use crate::encryption::decrypt_data;
+use crate::encryption::decrypt_data_blockwise;
 use ssh2::Session;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
@@ -107,15 +107,32 @@ pub fn restore_backup(filename: &str, settings: &Settings) -> io::Result<()> {
         io::Error::new(io::ErrorKind::NotFound, "Remote file not found")
     })?;
 
-    let mut encrypted_data = vec![];
-    remote_file.read_to_end(&mut encrypted_data)?;
+    let local_encrypted_path = format!("{}/{}", settings.restore_path.display(), filename);
+    let mut encrypted_file = File::create(&local_encrypted_path)?;
 
-    let decrypted_data = decrypt_data(&encrypted_data, settings)?;
+    let mut buffer = vec![0; UPLOAD_CHUNK_SIZE];
+    while let Ok(bytes_read) = remote_file.read(&mut buffer) {
+        if bytes_read == 0 {
+            break;
+        }
 
-    let local_filename = filename.trim_end_matches(".enc");
-    let local_path = format!("{}/{}", settings.restore_path.display(), local_filename);
-    fs::write(&local_path, decrypted_data)?;
+        encrypted_file.write_all(&buffer[..bytes_read])?;
+    }
 
-    println!("Backup {} successfully downloaded, decrypted, and saved as {}.", filename, local_path);
+    println!("File downloaded successfully. Decrypting...");
+
+    let local_decrypted_path = local_encrypted_path.trim_end_matches(".enc").to_string();
+    decrypt_data_blockwise(
+        Path::new(&local_encrypted_path),
+        Path::new(&local_decrypted_path),
+        settings,
+    )?;
+
+    fs::remove_file(&local_encrypted_path)?;
+    println!(
+        "Backup {} successfully decrypted and saved as {}.",
+        filename, local_decrypted_path
+    );
+
     Ok(())
 }

@@ -63,7 +63,7 @@ pub fn encrypt_data(archive_path: &str, encrypted_archive_path: &str, settings: 
     Ok(())
 }
 
-pub fn decrypt_data(encrypted_data: &[u8], settings: &Settings) -> io::Result<Vec<u8>> {
+pub fn decrypt_data_blockwise(input_path: &Path, output_path: &Path, settings: &Settings) -> io::Result<()> {
     let key = load_key(&settings.encryption_key_path)?;
     if key.len() != 32 {
         return Err(io::Error::new(io::ErrorKind::InvalidData, "Encryption key must be 32 bytes long"));
@@ -73,11 +73,41 @@ pub fn decrypt_data(encrypted_data: &[u8], settings: &Settings) -> io::Result<Ve
         .map_err(|_| io::Error::new(io::ErrorKind::Other, "Failed to create UnboundKey"))?;
     let less_safe_key = LessSafeKey::new(unbound_key);
 
-    let nonce = Nonce::assume_unique_for_key([0u8; 12]);
-    let mut encrypted_data = encrypted_data.to_vec();
-    let decrypted_data = less_safe_key
-        .open_in_place(nonce, Aad::empty(), &mut encrypted_data)
-        .map_err(|_| io::Error::new(io::ErrorKind::Other, "Decryption failed"))?;
+    let mut input_file = File::open(input_path)?;
+    let mut output_file = File::create(output_path)?;
 
-    Ok(decrypted_data.to_vec())
+    let mut buffer = vec![0; CHUNK_SIZE + 16]; // 16 extra bytes for the tag
+    let mut counter: u64 = 0;
+
+    while let Ok(bytes_read) = input_file.read(&mut buffer) {
+        if bytes_read == 0 {
+            break;
+        }
+
+        let mut chunk = buffer[..bytes_read].to_vec();
+
+        let nonce_bytes = counter.to_le_bytes();
+        let nonce = Nonce::assume_unique_for_key([
+            nonce_bytes[0],
+            nonce_bytes[1],
+            nonce_bytes[2],
+            nonce_bytes[3],
+            nonce_bytes[4],
+            nonce_bytes[5],
+            nonce_bytes[6],
+            nonce_bytes[7],
+            0, 0, 0, 0,
+        ]);
+
+        let decrypted_chunk = less_safe_key
+            .open_in_place(nonce, Aad::empty(), &mut chunk)
+            .map_err(|_| io::Error::new(io::ErrorKind::Other, "Decryption failed"))?
+            .to_vec();
+
+        output_file.write_all(&decrypted_chunk)?;
+        counter += 1;
+    }
+
+    println!("Decryption completed successfully: {}", output_path.display());
+    Ok(())
 }
