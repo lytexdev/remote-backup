@@ -76,6 +76,7 @@ pub fn create_backup(settings: &Settings) -> io::Result<()> {
     upload_file(&encrypted_archive_path, settings)?;
     println!("Upload completed.");
 
+    println!("Removing temporary files...");
     fs::remove_file(&archive_path)?;
     fs::remove_file(&encrypted_archive_path)?;
 

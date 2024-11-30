@@ -76,6 +76,19 @@ To download and decrypt a specific backup:
 ./target/release/remote-backup restore <backup-file-name>
 ```
 
+### Automatic backups
+Upload backups to the remote server every 24 hours with cron:
+```bash
+crontab -e
+```
+Add the following line to your crontab:
+```bash
+0 0 * * * /home/user/remote-backup/target/release/remote-backup -c /home/user/remote-backup/config.toml backup >> /var/log/remote_backup.log 2>&1
+```
+
+#### Automatic backup log
+The log file can be found at `/var/log/remote_backup.log`
+
 ## Features
 - **Compression**: Backups are compressed using XZ for storage efficiency
 - **Encryption**: Ensures secure backup storage with encryption key specified in `config.toml`
