@@ -2,13 +2,16 @@
 name = "remote-backup"
 version = "1.0.0"
 edition = "2021"
+authors = ["Immanuel Mruk"]
+description = "A tool for secure, encrypted remote backups over SSH"
+license = "GPL-2.0"
 
 [dependencies]
-config = "0.14.1"
+config = "0.15.11"
 ssh2 = "0.9.4"
 structopt = "0.3.26"
 ring = "0.17.8"
 tar = "0.4.43"
 xz2 = "0.1.7"
 chrono = "0.4.38"
-rand = "0.8.5"
+rand = "0.9.1"
