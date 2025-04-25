@@ -3,3 +3,5 @@ config.toml
 .DS_Store
 .vscode
 .log
+backup_crypt_key
+.backup_crypt_key
